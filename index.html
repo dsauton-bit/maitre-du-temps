@@ -5,7 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Maître du temps">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="theme-color" content="#e1000f">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
 <title>Maître du temps</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -44,6 +49,38 @@ h1 { font-family: var(--display); font-weight: 700; font-size: 1.5rem; margin: 0
 .state { font-family: var(--display); font-weight: 600; font-size: .8rem; text-transform: uppercase;
   letter-spacing: .08em; padding: 5px 10px; border-radius: 999px; background: var(--surface); color: var(--muted); }
 .state.run { background: var(--red-soft); color: var(--red); }
+.head-right { display: flex; align-items: center; gap: 8px; }
+.help-btn { width: 34px; height: 34px; border-radius: 50%; border: 2px solid var(--track); background: var(--bg);
+  color: var(--fg); font: 700 1.05rem/1 var(--display); cursor: pointer; padding: 0; display: grid; place-items: center; }
+
+.install-tip { display: flex; align-items: center; gap: 10px; background: var(--red-soft); color: var(--fg);
+  border-radius: 12px; padding: 10px 8px 10px 12px; font-size: .92rem; line-height: 1.35; }
+.install-tip span { flex: 1; min-width: 0; }
+.install-tip button { background: none; border: 0; color: var(--red); font: 600 .92rem/1 var(--body); cursor: pointer; padding: 6px; }
+.install-tip #tipHow { text-decoration: underline; text-underline-offset: 3px; white-space: nowrap; }
+.install-tip #tipClose { font-size: 1.3rem; color: var(--muted); }
+
+.help { border: 0; padding: 0; margin: auto; width: min(100% - 32px, 480px); max-height: min(100% - 32px, 760px);
+  border-radius: 18px; background: var(--bg); color: var(--fg); box-shadow: 0 12px 40px rgb(0 0 0 / .25); }
+.help::backdrop { background: rgb(20 17 19 / .55); }
+.help-inner { display: grid; gap: 14px; padding: 18px 18px 20px; overflow-y: auto; max-height: inherit; box-sizing: border-box; }
+.help-top { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  position: sticky; top: -18px; background: var(--bg); padding-block: 4px; }
+.help h2 { font: 700 1.35rem/1.1 var(--display); margin: 0; text-wrap: balance; }
+.help h3 { font: 600 .8rem/1 var(--display); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 6px 0 0; }
+.help p, .help li { font-size: .98rem; line-height: 1.45; margin: 0; }
+.help ol, .help ul { margin: 0; padding-left: 1.25rem; display: grid; gap: 6px; }
+.help details { background: var(--surface); border-radius: 12px; padding: 12px 14px; }
+.help summary { font: 600 1.05rem/1.2 var(--display); cursor: pointer; }
+.help details > *:not(summary) { margin-top: 10px; }
+.help kbd { font: 600 .9em/1 var(--body); background: var(--bg); border: 1px solid var(--track); border-radius: 6px; padding: 2px 6px;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.help .note { color: var(--muted); font-size: .9rem; }
+.help .installed { background: var(--red-soft); border-radius: 12px; padding: 10px 12px; }
+.install-btn { justify-self: start; background: var(--red); color: var(--on-red); border: 0; border-radius: 12px;
+  font: 700 1rem/1 var(--display); padding: 12px 18px; cursor: pointer; }
+.close-btn { background: var(--surface); color: var(--fg); border: 0; border-radius: 999px; font: 600 .95rem/1 var(--display);
+  padding: 9px 14px; cursor: pointer; }
 
 .dial { position: relative; flex: 1; min-height: 220px; display: grid; place-items: center; }
 .dial svg { width: min(100%, 320px); aspect-ratio: 1; max-width: 100%; }
@@ -110,8 +147,17 @@ button:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
       <svg class="drop" viewBox="0 0 22 28" aria-hidden="true"><path d="M11 1C11 1 2 12 2 18.5A9 9 0 0 0 20 18.5C20 12 11 1 11 1Z" fill="var(--red)"/></svg>
       <h1>Maître du temps</h1>
     </div>
-    <span class="state" id="state">Prêt</span>
+    <div class="head-right">
+      <span class="state" id="state">Prêt</span>
+      <button class="help-btn" id="helpBtn" type="button" aria-label="Aide" aria-haspopup="dialog">?</button>
+    </div>
   </header>
+
+  <div class="install-tip" id="installTip" hidden>
+    <span>Installez le chrono sur votre écran d'accueil pour l'ouvrir comme une app.</span>
+    <button type="button" id="tipHow">Comment faire</button>
+    <button type="button" id="tipClose" aria-label="Masquer ce conseil">×</button>
+  </div>
 
   <div class="dial">
     <svg viewBox="0 0 300 300" role="img" aria-label="Progression du chrono">
@@ -166,7 +212,109 @@ button:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
   <small>Touchez pour fermer</small>
 </div>
 
+<dialog class="help" id="help" aria-labelledby="helpTitle">
+  <div class="help-inner">
+    <div class="help-top">
+      <h2 id="helpTitle">Aide</h2>
+      <button class="close-btn" id="helpClose" type="button">Fermer</button>
+    </div>
+
+    <p class="installed" id="helpInstalled" hidden>Le chrono est déjà installé : vous l'avez ouvert depuis votre écran d'accueil.</p>
+
+    <h3>Installer comme une application</h3>
+    <p>Une fois installé, le chrono a son icône sur l'écran d'accueil et s'ouvre en plein écran, sans la barre du navigateur. Rien à télécharger depuis l'App Store.</p>
+
+    <details id="howIos">
+      <summary>Sur iPhone ou iPad</summary>
+      <ol>
+        <li>Ouvrez cette page dans <strong>Safari</strong>.</li>
+        <li>Touchez le bouton <kbd>Partager</kbd> (le carré avec une flèche vers le haut), en bas de l'écran ou à côté de l'adresse. Sur les iOS récents, il faut parfois d'abord toucher <kbd>•••</kbd>.</li>
+        <li>Faites défiler et touchez <kbd>Sur l'écran d'accueil</kbd>.</li>
+        <li>Si l'option <kbd>Ouvrir comme app web</kbd> apparaît, laissez-la activée.</li>
+        <li>Touchez <kbd>Ajouter</kbd>. L'icône rouge « Maître du temps » apparaît sur l'écran d'accueil.</li>
+      </ol>
+      <p class="note">Depuis Chrome sur iPhone, le menu Partager propose aussi « Sur l'écran d'accueil ».</p>
+    </details>
+
+    <details id="howAndroid">
+      <summary>Sur Android</summary>
+      <button class="install-btn" id="installBtn" type="button" hidden>Installer l'application</button>
+      <ol>
+        <li>Ouvrez cette page dans <strong>Chrome</strong>.</li>
+        <li>Touchez le menu <kbd>⋮</kbd> en haut à droite.</li>
+        <li>Touchez <kbd>Installer l'application</kbd> ou <kbd>Ajouter à l'écran d'accueil</kbd>, puis confirmez.</li>
+      </ol>
+    </details>
+
+    <details id="howDesktop">
+      <summary>Sur ordinateur</summary>
+      <p>Dans Chrome ou Edge, cliquez sur l'icône d'installation à droite de la barre d'adresse. Dans Safari sur Mac, choisissez <kbd>Fichier</kbd> puis <kbd>Ajouter au Dock</kbd>.</p>
+    </details>
+
+    <h3>Utiliser le chrono</h3>
+    <ul>
+      <li>Réglez la <strong>durée</strong> avec − et +, ou touchez une durée rapide.</li>
+      <li>Choisissez le nombre d'<strong>alertes</strong> : elles sont réparties à intervalles égaux. Touchez une alerte pour la couper.</li>
+      <li>Touchez <strong>Démarrer</strong>. La voix dit « Chrono lancé ».</li>
+      <li>À chaque alerte : un ding, puis la voix annonce le temps restant. À la fin : 6 bips, puis « Temps écoulé ».</li>
+      <li>Les réglages sont bloqués pendant le chrono. Touchez <strong>Remise à zéro</strong> pour les changer.</li>
+    </ul>
+
+    <h3>Pour que le son fonctionne</h3>
+    <ul>
+      <li>Lancez toujours le chrono avec <strong>Démarrer</strong> : le téléphone n'autorise le son qu'après un toucher.</li>
+      <li>Montez le volume et désactivez le mode silencieux.</li>
+      <li>Gardez l'écran allumé et le chrono au premier plan. Si l'écran se verrouille, le téléphone met la page en pause et les alertes ne sonnent pas.</li>
+      <li>Si l'écran s'éteint quand même sur iPhone : <kbd>Réglages</kbd> › <kbd>Luminosité et affichage</kbd> › <kbd>Verrouillage automatique</kbd> › <kbd>Jamais</kbd>, le temps du chrono.</li>
+      <li>Touchez <strong>Tester le son</strong> pour vérifier avant de commencer.</li>
+    </ul>
+  </div>
+</dialog>
+
 <script>
+// Aide et installation
+(() => {
+  const $id = id => document.getElementById(id);
+  const help = $id('help');
+  const ua = navigator.userAgent;
+  const isIos = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /Android/.test(ua);
+  const installed = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  $id(isIos ? 'howIos' : isAndroid ? 'howAndroid' : 'howDesktop').open = true;
+  $id('helpInstalled').hidden = !installed;
+
+  function openHelp() {
+    if (help.showModal) { try { help.showModal(); return; } catch {} }
+    help.setAttribute('open', '');
+  }
+  function closeHelp() { if (help.close) help.close(); else help.removeAttribute('open'); }
+  $id('helpBtn').addEventListener('click', openHelp);
+  $id('helpClose').addEventListener('click', closeHelp);
+  help.addEventListener('click', e => { if (e.target === help) closeHelp(); });
+
+  // Conseil d'installation : une seule fois, sur téléphone, hors app installée
+  let tipSeen = false;
+  try { tipSeen = localStorage.getItem('mdt-tip') === '1'; } catch {}
+  const tip = $id('installTip');
+  tip.hidden = installed || tipSeen || !(isIos || isAndroid);
+  const hideTip = () => { tip.hidden = true; try { localStorage.setItem('mdt-tip', '1'); } catch {} };
+  $id('tipClose').addEventListener('click', hideTip);
+  $id('tipHow').addEventListener('click', () => { hideTip(); openHelp(); });
+
+  // Android / Chrome : installation directe quand le navigateur le permet
+  let deferred = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault(); deferred = e; $id('installBtn').hidden = false;
+  });
+  $id('installBtn').addEventListener('click', async () => {
+    if (!deferred) return;
+    deferred.prompt();
+    try { await deferred.userChoice; } catch {}
+    deferred = null; $id('installBtn').hidden = true;
+  });
+  window.addEventListener('appinstalled', () => { $id('installBtn').hidden = true; tip.hidden = true; });
+})();
+
 (() => {
   const PRESETS = [10, 15, 20, 30, 45, 60];
   const MIN_DUR = 1, MAX_DUR = 180, MAX_CNT = 9;

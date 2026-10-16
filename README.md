@@ -10,9 +10,13 @@ Chrono pour iPhone, à ouvrir dans Safari. Tout tient dans un seul fichier, `ind
 - À la fin : 6 bips, puis « Temps écoulé ».
 - Un bouton « Tester le son » permet de vérifier le son avant de lancer le chrono.
 - Mode sombre automatique. Les réglages restent enregistrés sur l'appareil.
+- Aide intégrée (bouton **?**) : installation sur iPhone, Android et ordinateur, utilisation et conseils pour le son.
+- Installable comme une application (manifeste web et icônes fournis).
+
+En ligne : https://dsauton-bit.github.io/maitre-du-temps/
 
 ## Utilisation sur iPhone
 
-1. Ouvrez la page dans Safari, puis touchez Partager et « Sur l'écran d'accueil ».
+1. Ouvrez https://dsauton-bit.github.io/maitre-du-temps/ dans Safari, puis touchez Partager et « Sur l'écran d'accueil ». Le détail est dans l'aide de l'app (bouton **?**).
 2. Lancez toujours le chrono avec **Démarrer** : iOS n'autorise le son qu'après un toucher.
 3. Gardez l'écran allumé et l'app au premier plan. Si l'écran se verrouille, iOS met la page en pause et coupe le son. Si besoin, choisissez Réglages, puis Luminosité et affichage, puis Verrouillage automatique : Jamais.
