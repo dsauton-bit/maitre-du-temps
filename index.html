@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Maître du temps">
+<meta name="theme-color" content="#e1000f">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}</style>
+<title>Maître du temps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+/* Layout : écran unique, anneau de chrono au centre, réglages durée + alertes dessous, commandes au pouce en bas */
+:root {
+  --bg: #ffffff;
+  --surface: #f6f3f4;
+  --fg: #1d1a1c;
+  --muted: #6c6468;
+  --red: #e1000f;
+  --red-soft: #fde6e8;
+  --track: #ece7e9;
+  --on-red: #ffffff;
+  --display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "Source Sans 3", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141113; --surface: #211c1f; --fg: #f4eff1; --muted: #a59ca1;
+  --red: #ff3b45; --red-soft: #3a1619; --track: #2c2529; --on-red: #ffffff; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #141113; --surface: #211c1f; --fg: #f4eff1; --muted: #a59ca1;
+  --red: #ff3b45; --red-soft: #3a1619; --track: #2c2529; --on-red: #ffffff; color-scheme: dark }
+
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px;
+  -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+.app { box-sizing: border-box; min-height: 100%; max-width: 480px; margin: 0 auto;
+  padding: 16px 16px 20px; display: flex; flex-direction: column; gap: 16px; }
+
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { display: flex; align-items: center; gap: 10px; }
+.drop { width: 22px; height: 28px; flex: none; }
+h1 { font-family: var(--display); font-weight: 700; font-size: 1.5rem; margin: 0; letter-spacing: .01em; }
+.state { font-family: var(--display); font-weight: 600; font-size: .8rem; text-transform: uppercase;
+  letter-spacing: .08em; padding: 5px 10px; border-radius: 999px; background: var(--surface); color: var(--muted); }
+.state.run { background: var(--red-soft); color: var(--red); }
+
+.dial { position: relative; flex: 1; min-height: 220px; display: grid; place-items: center; }
+.dial svg { width: min(100%, 320px); aspect-ratio: 1; max-width: 100%; }
+.ring-track { fill: none; stroke: var(--track); stroke-width: 14; }
+.ring { fill: none; stroke: var(--red); stroke-width: 14; stroke-linecap: round;
+  transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset .25s linear; }
+.tick { stroke: var(--red); stroke-width: 3; stroke-linecap: round; }
+.tick.off { stroke: var(--fg); opacity: .25; }
+.readout { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 2px; pointer-events: none; }
+.time { font-family: var(--display); font-weight: 600; font-size: clamp(3.4rem, 18vw, 5.2rem);
+  line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -.01em; }
+.sub { color: var(--muted); font-size: .95rem; }
+
+.label { font-family: var(--display); font-weight: 600; font-size: .8rem; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--muted); margin: 0; }
+.settings { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.setting { background: var(--surface); border-radius: 14px; padding: 10px 12px 12px; display: grid; gap: 8px; min-width: 0; }
+.stepper { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.stepper output { font: 600 1.6rem/1 var(--display); font-variant-numeric: tabular-nums; text-align: center; flex: 1; }
+.stepper output small { font-size: .9rem; color: var(--muted); margin-left: 2px; }
+.step { width: 42px; height: 42px; flex: none; border-radius: 50%; border: 2px solid var(--track); background: var(--bg);
+  color: var(--fg); font: 600 1.4rem/1 var(--display); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.step:disabled { opacity: .35; cursor: default; }
+.presets { display: flex; gap: 8px; flex-wrap: wrap; }
+.preset { font: 600 .95rem/1 var(--display); padding: 9px 12px; border-radius: 999px; border: 2px solid var(--track);
+  background: transparent; color: var(--fg); cursor: pointer; font-variant-numeric: tabular-nums; }
+.preset[aria-pressed="true"] { border-color: var(--red); color: var(--red); background: var(--red-soft); }
+.locked .setting, .locked .presets { opacity: .5; pointer-events: none; }
+
+.alerts { display: grid; gap: 8px; }
+.alerts-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.hint { font-size: .85rem; color: var(--muted); }
+.chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(68px, 1fr)); gap: 8px; }
+.chip { font: 600 1rem/1 var(--display); padding: 12px 0; border-radius: 12px; border: 2px solid var(--track);
+  background: transparent; color: var(--fg); cursor: pointer; font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { border-color: var(--red); color: var(--red); background: var(--red-soft); }
+.chip.done { opacity: .45; text-decoration: line-through; }
+.test { justify-self: start; font: 600 .95rem/1 var(--body); color: var(--red); background: none; border: 0;
+  padding: 6px 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.empty { color: var(--muted); font-size: .95rem; margin: 0; }
+button:focus-visible { outline: 3px solid var(--fg); outline-offset: 2px; }
+
+.controls { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.btn { font: 700 1.15rem/1 var(--display); letter-spacing: .03em; border: 0; border-radius: 16px;
+  padding: 20px 0; cursor: pointer; }
+.btn.main { background: var(--red); color: var(--on-red); }
+.btn.ghost { background: var(--surface); color: var(--fg); }
+
+.flash { position: fixed; inset: 0; background: var(--red); color: var(--on-red); display: grid;
+  place-content: center; text-align: center; gap: 8px; padding: 24px; z-index: 10; }
+.flash strong { font: 700 clamp(2.6rem, 14vw, 4rem)/1 var(--display); font-variant-numeric: tabular-nums; }
+.flash span { font-size: 1.1rem; }
+.flash small { opacity: .85; margin-top: 18px; }
+.flash:not([hidden]) { animation: pulse 1s ease-in-out 3; }
+@keyframes pulse { 50% { filter: brightness(1.25); } }
+@media (prefers-reduced-motion: reduce) { .flash:not([hidden]) { animation: none; } .ring { transition: none; } }
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <header>
+    <div class="brand">
+      <svg class="drop" viewBox="0 0 22 28" aria-hidden="true"><path d="M11 1C11 1 2 12 2 18.5A9 9 0 0 0 20 18.5C20 12 11 1 11 1Z" fill="var(--red)"/></svg>
+      <h1>Maître du temps</h1>
+    </div>
+    <span class="state" id="state">Prêt</span>
+  </header>
+
+  <div class="dial">
+    <svg viewBox="0 0 300 300" role="img" aria-label="Progression du chrono">
+      <circle class="ring-track" cx="150" cy="150" r="128"></circle>
+      <circle class="ring" id="ring" cx="150" cy="150" r="128"></circle>
+      <g id="ticks"></g>
+    </svg>
+    <div class="readout">
+      <div class="time" id="time">30:00</div>
+      <div class="sub" id="sub">Prochaine alerte à 22:30</div>
+    </div>
+  </div>
+
+  <section class="settings" aria-label="Réglages">
+    <div class="setting">
+      <p class="label">Durée</p>
+      <div class="stepper">
+        <button class="step" id="durMinus" type="button" aria-label="Diminuer la durée">−</button>
+        <output id="durOut">30<small>min</small></output>
+        <button class="step" id="durPlus" type="button" aria-label="Augmenter la durée">+</button>
+      </div>
+    </div>
+    <div class="setting">
+      <p class="label">Alertes</p>
+      <div class="stepper">
+        <button class="step" id="cntMinus" type="button" aria-label="Moins d'alertes">−</button>
+        <output id="cntOut">3</output>
+        <button class="step" id="cntPlus" type="button" aria-label="Plus d'alertes">+</button>
+      </div>
+    </div>
+  </section>
+  <div class="presets" id="presets" aria-label="Durées rapides"></div>
+
+  <section class="alerts">
+    <div class="alerts-head">
+      <p class="label">Alertes · temps restant</p>
+      <span class="hint" id="spacing"></span>
+    </div>
+    <div class="chips" id="chips"></div>
+    <button class="test" id="test" type="button">Tester le son</button>
+  </section>
+
+  <div class="controls">
+    <button class="btn ghost" id="reset" type="button">Remise à zéro</button>
+    <button class="btn main" id="toggle" type="button">Démarrer</button>
+  </div>
+</div>
+
+<div class="flash" id="flash" hidden role="alert">
+  <strong id="flashTitle">10:00</strong>
+  <span id="flashText">restantes</span>
+  <small>Touchez pour fermer</small>
+</div>
+
+<script>
+(() => {
+  const PRESETS = [10, 15, 20, 30, 45, 60];
+  const MIN_DUR = 1, MAX_DUR = 180, MAX_CNT = 9;
+  const R = 128, C = 2 * Math.PI * R;
+  const $ = id => document.getElementById(id);
+  const ring = $('ring'), timeEl = $('time'), subEl = $('sub'), stateEl = $('state');
+  const toggleBtn = $('toggle'), flash = $('flash'), app = $('app');
+
+  // Réglages (gardés sur l'appareil)
+  let cfg = { dur: 30, cnt: 3, off: [] };
+  try { const s = JSON.parse(localStorage.getItem('mdt-cfg')); if (s && s.dur) cfg = Object.assign(cfg, s); } catch {}
+  const save = () => { try { localStorage.setItem('mdt-cfg', JSON.stringify(cfg)); } catch {} };
+
+  let total, marks, fired = new Set();
+  let remaining, endAt = null, raf = null, audio = null, wake = null;
+
+  // Alertes réparties à intervalles égaux : durée × k / (n + 1), arrondi à la seconde
+  function computeMarks() {
+    const s = cfg.dur * 60, out = [];
+    for (let k = cfg.cnt; k >= 1; k--) out.push(Math.round(s * k / (cfg.cnt + 1)));
+    return out; // secondes restantes, ordre décroissant
+  }
+  function applyCfg(keepOff) {
+    if (!keepOff) cfg.off = [];
+    total = cfg.dur * 60000; marks = computeMarks();
+    remaining = total; fired.clear(); save(); buildMarks(); render();
+  }
+
+  const fmt = sec => String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
+  const fmtMs = ms => fmt(Math.ceil(ms / 1000));
+  const fmtGap = sec => sec % 60 ? Math.floor(sec / 60) + ' min ' + String(sec % 60).padStart(2, '0') : sec / 60 + ' min';
+  const isOn = m => !cfg.off.includes(m);
+
+  ring.style.strokeDasharray = C;
+
+  function buildMarks() {
+    const ticks = $('ticks'); ticks.innerHTML = '';
+    const chips = $('chips'); chips.innerHTML = '';
+    marks.forEach(m => {
+      const a = (1 - m / (cfg.dur * 60)) * 2 * Math.PI - Math.PI / 2;
+      const l = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      l.setAttribute('x1', 150 + Math.cos(a) * (R - 16)); l.setAttribute('y1', 150 + Math.sin(a) * (R - 16));
+      l.setAttribute('x2', 150 + Math.cos(a) * (R - 28)); l.setAttribute('y2', 150 + Math.sin(a) * (R - 28));
+      l.classList.add('tick'); l.dataset.m = m; ticks.appendChild(l);
+
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.id = 'chip-' + m; b.textContent = fmt(m); b.dataset.m = m;
+      b.addEventListener('click', () => {
+        cfg.off = isOn(m) ? cfg.off.concat(m) : cfg.off.filter(x => x !== m);
+        save(); render();
+      });
+      chips.appendChild(b);
+    });
+    if (!marks.length) chips.innerHTML = '<p class="empty">Aucune alerte intermédiaire. Seule la fin sonnera.</p>';
+    $('spacing').textContent = marks.length ? 'toutes les ' + fmtGap(Math.round(cfg.dur * 60 / (cfg.cnt + 1))) : '';
+
+    const p = $('presets'); p.innerHTML = '';
+    PRESETS.forEach(d => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'preset'; b.id = 'preset-' + d; b.textContent = d + ' min';
+      b.setAttribute('aria-pressed', d === cfg.dur);
+      b.addEventListener('click', () => { cfg.dur = d; applyCfg(); });
+      p.appendChild(b);
+    });
+  }
+
+  function render() {
+    const running = endAt !== null, started = remaining < total;
+    timeEl.textContent = fmtMs(remaining);
+    ring.style.strokeDashoffset = C * (1 - remaining / total);
+    const next = marks.find(m => isOn(m) && !fired.has(m) && m * 1000 < remaining);
+    subEl.textContent = remaining <= 0 ? 'Temps écoulé'
+      : next ? 'Prochaine alerte à ' + fmt(next) : 'Alerte finale à 00:00';
+    document.querySelectorAll('.chip').forEach(c => {
+      const m = +c.dataset.m;
+      c.setAttribute('aria-pressed', isOn(m)); c.classList.toggle('done', fired.has(m));
+    });
+    document.querySelectorAll('.tick').forEach(t => t.classList.toggle('off', !isOn(+t.dataset.m)));
+    $('durOut').innerHTML = cfg.dur + '<small>min</small>';
+    $('cntOut').textContent = cfg.cnt;
+    $('durMinus').disabled = cfg.dur <= MIN_DUR; $('durPlus').disabled = cfg.dur >= MAX_DUR;
+    $('cntMinus').disabled = cfg.cnt <= 0; $('cntPlus').disabled = cfg.cnt >= MAX_CNT;
+    app.classList.toggle('locked', running || (started && remaining > 0));
+    toggleBtn.textContent = running ? 'Pause' : remaining <= 0 ? 'Recommencer' : started ? 'Reprendre' : 'Démarrer';
+    stateEl.textContent = running ? 'En cours' : remaining <= 0 ? 'Terminé' : started ? 'En pause' : 'Prêt';
+    stateEl.classList.toggle('run', running);
+  }
+
+  // Durée : pas de 1 min jusqu'à 10, puis 5 min
+  const stepDur = dir => {
+    let d = cfg.dur;
+    d = dir > 0 ? (d < 10 ? d + 1 : Math.floor(d / 5) * 5 + 5) : (d <= 10 ? d - 1 : Math.ceil(d / 5) * 5 - 5);
+    cfg.dur = Math.min(MAX_DUR, Math.max(MIN_DUR, d)); applyCfg();
+  };
+  $('durMinus').addEventListener('click', () => stepDur(-1));
+  $('durPlus').addEventListener('click', () => stepDur(1));
+  $('cntMinus').addEventListener('click', () => { cfg.cnt = Math.max(0, cfg.cnt - 1); applyCfg(); });
+  $('cntPlus').addEventListener('click', () => { cfg.cnt = Math.min(MAX_CNT, cfg.cnt + 1); applyCfg(); });
+
+  // Bips joués par un lecteur audio classique : plus fiable sur iPhone que Web Audio,
+  // qui se coupe après une annonce vocale ou avec le bouton silencieux
+  const player = new Audio();
+  player.preload = 'auto'; player.setAttribute('playsinline', '');
+  const wavCache = {};
+  function makeWav(times, freq) {
+    const rate = 22050, beepLen = 0.25, gap = 0.1, n = Math.round(rate * (times * (beepLen + gap) + 0.1));
+    const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+    const w = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true);
+    v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
+    v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+    for (let i = 0; i < n; i++) {
+      const t = i / rate, k = t % (beepLen + gap), idx = Math.floor(t / (beepLen + gap));
+      let s = 0;
+      if (idx < times && k < beepLen) {
+        const env = Math.min(1, k / 0.01, (beepLen - k) / 0.05);
+        s = Math.sin(2 * Math.PI * freq * t) * env * 0.8;
+      }
+      v.setInt16(44 + i * 2, s * 32767, true);
+    }
+    return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+  }
+  // onFail est appelé si le lecteur ne démarre pas vraiment dans la seconde
+  function beep(times, freq, onFail) {
+    const key = times + '-' + freq;
+    const url = wavCache[key] || (wavCache[key] = makeWav(times, freq));
+    let settled = false;
+    const fail = () => { if (settled) return; settled = true; beepWA(times, freq); onFail && onFail(); };
+    try {
+      player.onplaying = () => { settled = true; };
+      player.muted = false; player.src = url; player.currentTime = 0;
+      const p = player.play();
+      if (p && p.catch) p.catch(fail);
+      setTimeout(() => { if (!settled && player.paused) fail(); else settled = true; }, 1000);
+    } catch { fail(); }
+  }
+  // iOS : le lecteur doit jouer une première fois pendant un toucher pour être autorisé ensuite
+  function unlockPlayer() {
+    try {
+      player.src = wavCache['1-660'] || (wavCache['1-660'] = makeWav(1, 660));
+      player.muted = true;
+      const p = player.play();
+      if (p && p.then) p.then(() => { if (player.muted) { player.pause(); player.muted = false; } }).catch(() => { player.muted = false; });
+    } catch {}
+  }
+
+  function beepWA(times, freq) {
+    if (!audio) return;
+    try { audio.resume(); } catch {}
+    const t0 = audio.currentTime;
+    for (let i = 0; i < times; i++) {
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      const s = t0 + i * 0.35;
+      g.gain.setValueAtTime(0.0001, s); g.gain.exponentialRampToValueAtTime(0.6, s + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, s + 0.25);
+      o.connect(g).connect(audio.destination); o.start(s); o.stop(s + 0.3);
+    }
+  }
+
+  // Annonce vocale en français (synthèse vocale de l'iPhone)
+  const tts = 'speechSynthesis' in window ? window.speechSynthesis : null;
+  let frVoice = null;
+  const pickVoice = () => {
+    if (!tts) return;
+    const v = tts.getVoices().filter(v => /^fr/i.test(v.lang));
+    frVoice = v.find(v => /fr[-_]FR/i.test(v.lang)) || v[0] || null;
+  };
+  if (tts) { pickVoice(); tts.addEventListener && tts.addEventListener('voiceschanged', pickVoice); }
+
+  // Prépare le son : sortie "lecture" (ignore le bouton silencieux sur iOS 17+) et réveil du contexte audio
+  function primeAudio() {
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+    if (!audio) { try { audio = new (window.AudioContext || window.webkitAudioContext)(); } catch {} }
+    try { audio && audio.resume(); } catch {}
+    unlockPlayer();
+  }
+
+  // Parle ; si la voix ne démarre pas en 1,5 s (bloquée par iOS), on bipe à la place
+  let voiceOk = null;
+  function say(text, fallback) {
+    if (!tts) { fallback(); return; }
+    let started = false;
+    try {
+      tts.resume(); // iOS laisse parfois la synthèse bloquée en pause
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = 'fr-FR'; if (frVoice) u.voice = frVoice; u.rate = 0.95; u.volume = 1;
+      u.onstart = () => { started = true; voiceOk = true; };
+      u.onerror = () => { if (!started) { started = true; voiceOk = false; fallback(); } };
+      tts.speak(u);
+    } catch { fallback(); return; }
+    setTimeout(() => { if (!started) { started = true; voiceOk = false; try { tts.cancel(); } catch {} fallback(); } }, 1500);
+  }
+  // iOS n'autorise la voix qu'après un geste : une vraie phrase, dite au toucher de Démarrer, la débloque
+  function unlockVoice() {
+    if (!tts) return;
+    try {
+      tts.cancel();
+      const u = new SpeechSynthesisUtterance('Chrono lancé');
+      u.lang = 'fr-FR'; if (frVoice) u.voice = frVoice; u.rate = 1; u.volume = 1;
+      u.onstart = () => { voiceOk = true; };
+      tts.speak(u);
+    } catch {}
+  }
+
+  function spoken(sec) {
+    const m = Math.floor(sec / 60), s = sec % 60;
+    const parts = [];
+    if (m) parts.push(m === 1 ? 'une minute' : m + ' minutes');
+    if (s) parts.push(s === 1 ? 'une seconde' : s + ' secondes');
+    return 'Il reste ' + parts.join(' et ');
+  }
+
+  // Fin : on libère la voix (iOS bloque le son tant qu'elle occupe le haut-parleur), on bipe,
+  // puis la voix confirme. Si les bips ne partent pas, la voix annonce la fin tout de suite.
+  function endSignal() {
+    try { tts && tts.cancel(); } catch {}
+    let spokeEarly = false;
+    setTimeout(() => {
+      beep(6, 1046, () => { spokeEarly = true; say('Temps écoulé. Temps écoulé.', () => {}); });
+      setTimeout(() => { if (!spokeEarly) say('Temps écoulé', () => {}); }, 2400);
+    }, 200);
+  }
+
+  function alertUser(title, text, final, sec) {
+    try { audio && audio.resume(); } catch {}
+    if (final) endSignal();
+    else {
+      beep(1, 660); // petit signal avant l'annonce
+      setTimeout(() => say(spoken(sec), () => beep(3, 880)), 450);
+    }
+    try { navigator.vibrate && navigator.vibrate(final ? [400, 200, 400, 200, 400] : [300, 150, 300]); } catch {}
+    $('flashTitle').textContent = title; $('flashText').textContent = text; flash.hidden = false;
+  }
+
+  function tick() {
+    remaining = Math.max(0, endAt - Date.now());
+    marks.forEach(m => {
+      if (isOn(m) && !fired.has(m) && remaining <= m * 1000) {
+        fired.add(m);
+        if (remaining > m * 1000 - 5000) alertUser(fmt(m), 'restantes', false, m);
+      }
+    });
+    if (remaining <= 0) { stop(); alertUser('Terminé', 'Les ' + cfg.dur + ' minutes sont écoulées', true); render(); return; }
+    render();
+    raf = requestAnimationFrame(tick);
+  }
+
+  async function keepAwake() {
+    try { if ('wakeLock' in navigator) wake = await navigator.wakeLock.request('screen'); } catch {}
+  }
+
+  function start() {
+    primeAudio();
+    unlockVoice();
+    if (remaining <= 0) { remaining = total; fired.clear(); }
+    endAt = Date.now() + remaining;
+    keepAwake(); tick();
+  }
+  function stop() {
+    cancelAnimationFrame(raf); endAt = null;
+    try { wake && wake.release(); } catch {} wake = null;
+  }
+
+  toggleBtn.addEventListener('click', () => { endAt !== null ? (stop(), render()) : start(); });
+  $('test').addEventListener('click', () => {
+    primeAudio();
+    setTimeout(() => {
+      beep(1, 660);
+      const next = marks.find(m => isOn(m)) || 600;
+      setTimeout(() => say(spoken(next), () => { beep(3, 880); $('test').textContent = 'Voix indisponible, bip à la place'; }), 450);
+      setTimeout(endSignal, 5000); // puis le signal de fin
+    }, 150);
+  });
+  $('reset').addEventListener('click', () => { stop(); remaining = total; fired.clear(); flash.hidden = true; render(); });
+  flash.addEventListener('click', () => { flash.hidden = true; });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && endAt !== null) { keepAwake(); cancelAnimationFrame(raf); tick(); }
+  });
+
+  applyCfg(true);
+})();
+</script>
+</body>
+</html>
